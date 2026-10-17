@@ -4,6 +4,11 @@ add_library(Os STATIC
     ${PRIVATE_SOURCES}
 )
 
+target_link_libraries(Os
+    PRIVATE
+        SDL3::SDL3-static
+)
+
 target_include_directories(Os
     PUBLIC
         ${CMAKE_SOURCE_DIR}

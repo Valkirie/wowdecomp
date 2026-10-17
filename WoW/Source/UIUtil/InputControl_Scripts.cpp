@@ -4,6 +4,7 @@
 #include "Engine/Source/FrameScript/FrameScript_Object.h"
 #include "Engine/Source/Frame/CSimpleTop.h"
 #include "Engine/Source/FrameXML/LoadXML.h"
+#include "Engine/Source/Os/Gamepad.h"
 #include "WoW/Source/Object/Movement.h"
 #include "WoW/Source/Object/ObjectClient/Player_C.h"
 #include "WoW/Source/Object/ObjectClient/Unit_C.h"
@@ -457,6 +458,47 @@ static int32_t Script_VehicleAimGetNormPower(lua_State* L) {
     return 1;
 }
 
+static int32_t Script_GetGamepadType(lua_State* L) {
+    uint32_t index = static_cast<uint32_t>(lua_tonumber(L, 1));
+    GAMEPAD_TYPE type = static_cast<GAMEPAD_TYPE>(index ? OsGamepadGetType(index - 1) : GAMEPAD_TYPE_UNKNOWN);
+    const char* name = "UNKNOWN";
+
+    switch (type) {
+        case GAMEPAD_TYPE_STANDARD: name = "STANDARD"; break;
+        case GAMEPAD_TYPE_XBOX360: name = "XBOX360"; break;
+        case GAMEPAD_TYPE_XBOXONE: name = "XBOXONE"; break;
+        case GAMEPAD_TYPE_PS3: name = "PS3"; break;
+        case GAMEPAD_TYPE_PS4: name = "PS4"; break;
+        case GAMEPAD_TYPE_PS5: name = "PS5"; break;
+        case GAMEPAD_TYPE_SWITCH_PRO: name = "SWITCH_PRO"; break;
+        case GAMEPAD_TYPE_JOYCON_LEFT: name = "JOYCON_LEFT"; break;
+        case GAMEPAD_TYPE_JOYCON_RIGHT: name = "JOYCON_RIGHT"; break;
+        case GAMEPAD_TYPE_JOYCON_PAIR: name = "JOYCON_PAIR"; break;
+        default: break;
+    }
+
+    lua_pushstring(L, name);
+    return 1;
+}
+
+static int32_t Script_GetSelectedGamepad(lua_State* L) {
+    uint32_t index = OsGamepadGetSelectedIndex();
+
+    if (index == 0xFFFFFFFF) {
+        lua_pushnil(L);
+    } else {
+        lua_pushnumber(L, index + 1);
+    }
+
+    return 1;
+}
+
+static int32_t Script_SetSelectedGamepad(lua_State* L) {
+    uint32_t index = static_cast<uint32_t>(lua_tonumber(L, 1));
+    lua_pushboolean(L, index && OsGamepadSelect(index - 1));
+    return 1;
+}
+
 // VERIFY: 07912041 auto
 // OFFSET: 0x005F9DD0
 static int32_t Script_IsMouselooking(lua_State* L) {
@@ -801,6 +843,43 @@ static int32_t Script_MoveAndSteerStart(lua_State* L) {
     return 0;
 }
 
+static int32_t Script_IsGamepadEnabled(lua_State* L) {
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+static int32_t Script_GetNumGamepads(lua_State* L) {
+    lua_pushnumber(L, OsGamepadCount());
+    return 1;
+}
+
+static int32_t Script_GetGamepadName(lua_State* L) {
+    uint32_t index = static_cast<uint32_t>(lua_tonumber(L, 1));
+    uint32_t device = index ? OsGamepadGetDevice(index - 1) : 0xFFFFFFFF;
+    char name[256];
+
+    if (device == 0xFFFFFFFF || !OsGamepadGetName(device, name, sizeof(name))) {
+        lua_pushnil(L);
+    } else {
+        lua_pushstring(L, name);
+    }
+
+    return 1;
+}
+
+static int32_t Script_GetGamepadAxis(lua_State* L) {
+    int32_t axis = static_cast<int32_t>(lua_tonumber(L, 1));
+    CGInputControl* input = CGInputControl::s_inputControl;
+
+    if (!input || axis < 1 || axis > GAMEPAD_AXES) {
+        lua_pushnil(L);
+    } else {
+        lua_pushnumber(L, input->m_gamepadAxes[axis - 1]);
+    }
+
+    return 1;
+}
+
 // STATIC: 0x00AD1938
 static FrameScript_Method s_ScriptFunctions[] = {
     { "JumpOrAscendStart", &Script_JumpOrAscendStart },
@@ -855,6 +934,13 @@ static FrameScript_Method s_ScriptFunctions[] = {
     { "IsVehicleAimAngleAdjustable", &Script_IsVehicleAimAngleAdjustable },
     { "IsVehicleAimPowerAdjustable", &Script_IsVehicleAimPowerAdjustable },
     { "DetectWowMouse", &Script_DetectWowMouse },
+    { "IsGamepadEnabled", &Script_IsGamepadEnabled },
+    { "GetNumGamepads", &Script_GetNumGamepads },
+    { "GetGamepadName", &Script_GetGamepadName },
+    { "GetGamepadAxis", &Script_GetGamepadAxis },
+    { "GetGamepadType", &Script_GetGamepadType },
+    { "GetSelectedGamepad", &Script_GetSelectedGamepad },
+    { "SetSelectedGamepad", &Script_SetSelectedGamepad },
 };
 
 // VERIFY: ee8cb67b auto

@@ -19,6 +19,7 @@
 #include "Engine/Source/Gx/Gx.h"
 #include "Engine/Source/Gxu/Gxu.h"
 #include "Engine/Source/Model2/M2Scene.h"
+#include "Engine/Source/Os/Gamepad.h"
 #include "Engine/Source/Os/Time.h"
 #include "Engine/Source/Os/TimeManager.h"
 #include "Engine/Source/Services/Camera.h"
@@ -1252,6 +1253,8 @@ CGWorldFrame::CGWorldFrame(CSimpleFrame* parent) : CSimpleFrame(parent) {
     }
 
     EventRegisterEx(EVENT_ID_IDLE, CGWorldFrame::Update, this, -1000.0f);
+    EventRegisterEx(EVENT_ID_GAMEPAD_BUTTON_DOWN, CGWorldFrame::OnGamepadButtonDown, this, 1.0f);
+    EventRegisterEx(EVENT_ID_GAMEPAD_BUTTON_UP, CGWorldFrame::OnGamepadButtonUp, this, 1.0f);
     FFX::Init();
 
     CGWorldFrame::ffxEffectGlow = new (__FILE__, __LINE__) EffectGlow();
@@ -1260,6 +1263,23 @@ CGWorldFrame::CGWorldFrame(CSimpleFrame* parent) : CSimpleFrame(parent) {
     CGWorldFrame::ffxEffectSwirlingFog = new (__FILE__, __LINE__) EffectSwirlingFog();
 
     CGWorldFrame::UpdateScreenEffect();
+}
+
+int32_t CGWorldFrame::OnGamepadButtonDown(const void* data, void* param) {
+    const EVENT_DATA_GAMEPAD_BUTTON* event = static_cast<const EVENT_DATA_GAMEPAD_BUTTON*>(data);
+
+    if (event->m_device != OsGamepadGetSelectedDevice()) {
+        return 0;
+    }
+
+    const char* binding = CGUIBindings::GamepadButtonToString(event->m_button);
+    return binding && CGUIBindings::s_bindings ? CGUIBindings::s_bindings->ExecKey(0, binding, 1, 1, static_cast<BINDING_MODE>(4)) : 0;
+}
+
+int32_t CGWorldFrame::OnGamepadButtonUp(const void* data, void* param) {
+    const EVENT_DATA_GAMEPAD_BUTTON* event = static_cast<const EVENT_DATA_GAMEPAD_BUTTON*>(data);
+    const char* binding = CGUIBindings::GamepadButtonToString(event->m_button);
+    return binding && CGUIBindings::s_bindings ? CGUIBindings::s_bindings->ExecKey(0, binding, 0, 1, static_cast<BINDING_MODE>(4)) : 0;
 }
 
 // VERIFY: 74e81b7f auto
@@ -2493,6 +2513,8 @@ int32_t CGWorldFrame::SpellEffectEnumProc(void* param, uint32_t flags, uint64_t 
 // OFFSET: [0x004FA390, 0x004FAF60]
 CGWorldFrame::~CGWorldFrame() {
     EventUnregisterEx(EVENT_ID_IDLE, CGWorldFrame::Update, this, 0xFFFFFFFF);
+    EventUnregisterEx(EVENT_ID_GAMEPAD_BUTTON_DOWN, CGWorldFrame::OnGamepadButtonDown, this, 0xFFFFFFFF);
+    EventUnregisterEx(EVENT_ID_GAMEPAD_BUTTON_UP, CGWorldFrame::OnGamepadButtonUp, this, 0xFFFFFFFF);
     EventSetMouseMode(MOUSE_MODE_NORMAL, 0);
     CGWorldFrame::s_currentWorldFrame = nullptr;
 

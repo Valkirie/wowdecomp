@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include "Engine/Source/Event/Types.h"
 #include "Engine/Source/Storm/H/stpl.h"
 #include "WoW/Source/UIUtil/Types.h"
 
@@ -39,6 +40,8 @@ class CGInputControl {
     static void Destroy();
     static CGInputControl* GetActive();
     static float GetUIVehiclePower();
+    static int32_t OnGamepadAxis(const void* data, void* param);
+    static int32_t OnGamepadDevice(const void* data, void* param);
     int32_t IsVehicleSeatFlagSet(uint32_t flags) const;
     static void SendUIVehicleAngleUpdate(float angle);
     static int32_t WowMouseEnabled();
@@ -62,6 +65,9 @@ class CGInputControl {
     /* 0064 */ float m_joystickLookX;
     /* 0068 */ float m_joystickLookY;
     /* 006C */ WowMouse* m_wowMouse;
+    /* 0070 */ uint32_t m_activeGamepad;
+    /* 0074 */ float m_gamepadAxes[GAMEPAD_AXES];
+    /* 008C */ float m_gamepadRawAxes[GAMEPAD_AXES];
 
     CGInputControl();
     ~CGInputControl();

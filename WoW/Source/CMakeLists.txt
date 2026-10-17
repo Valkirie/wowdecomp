@@ -77,3 +77,11 @@ target_link_libraries(Wow
         WowServices
         WowSvcs
 )
+
+if (EXISTS ${CMAKE_SOURCE_DIR}/Addons)
+    add_custom_command(TARGET Wow POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/bin/Win/Interface/AddOns
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/Addons ${CMAKE_SOURCE_DIR}/bin/Win/Interface/AddOns
+        COMMENT "Deploying bundled addons"
+    )
+endif ()

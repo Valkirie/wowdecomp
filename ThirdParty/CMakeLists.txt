@@ -1,3 +1,20 @@
+include(FetchContent)
+
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(SDL3
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+    GIT_TAG 877399b2b2cf21e67554ed9046410f268ce1d1b2
+    GIT_SHALLOW FALSE
+)
+
+FetchContent_MakeAvailable(SDL3)
+
 add_library(zlib STATIC
     zlib/adler32.c
     zlib/compress.c

@@ -68,6 +68,7 @@ class CGUIBindings {
     static int32_t AddMetaPrefix(uint32_t modifiers, char*& binding, int32_t& maxLength);
     static void AddModifiers(uint32_t& modifiers, const char*& binding);
     static void Initialize();
+    static const char* GamepadButtonToString(GAMEPAD_BUTTON button);
     static char* KeyEventToString(const CKeyEvent& evt, char* binding, int32_t maxLength);
     static void LoadBindings();
     static void LoadBindings(BINDING_SET set, const char* data);

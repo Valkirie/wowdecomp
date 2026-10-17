@@ -102,6 +102,16 @@ static char s_keyName[8];
 // STATIC: 0x00BEAE18
 static char s_bindKey[2];
 
+static const char* s_gamepadButtonNames[GAMEPAD_BUTTONS] = {
+    "PAD1", "PAD2", "PAD3", "PAD4",
+    "PADBACK", "PADSYSTEM", "PADFORWARD",
+    "PADLSTICK", "PADRSTICK", "PADLSHOULDER", "PADRSHOULDER",
+    "PADDUP", "PADDDOWN", "PADDLEFT", "PADDRIGHT",
+    "PADSOCIAL", "PADPADDLE1", "PADPADDLE2", "PADPADDLE3", "PADPADDLE4",
+    "PADTOUCHPAD", "PADMISC2", "PADMISC3", "PADMISC4", "PADMISC5", "PADMISC6",
+    "PADLTRIGGER", "PADRTRIGGER",
+};
+
 // VERIFY: ba836cb5 manual
 // OFFSET: 0x0055DAB0
 static int32_t IsValidKeyName(const char* key) {
@@ -151,7 +161,17 @@ static int32_t IsValidKeyName(const char* key) {
         }
     }
 
+    for (uint32_t i = 0; i < GAMEPAD_BUTTONS; i++) {
+        if (!SStrCmp(key, s_gamepadButtonNames[i], STORM_MAX_STR)) {
+            return 1;
+        }
+    }
+
     return 0;
+}
+
+const char* CGUIBindings::GamepadButtonToString(GAMEPAD_BUTTON button) {
+    return button < GAMEPAD_BUTTONS ? s_gamepadButtonNames[button] : nullptr;
 }
 
 // VERIFY: 532ce7dd manual

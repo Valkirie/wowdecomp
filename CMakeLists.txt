@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.21)
 
 if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
     message(FATAL_ERROR
@@ -124,3 +124,4 @@ foreach (target Wow WowClient MapViewer M2Viewer GxTest MpqTest BlpTest DbcTest 
         target_sources(${target} PRIVATE ${CMAKE_SOURCE_DIR}/waystone.rc)
     endif ()
 endforeach ()
+

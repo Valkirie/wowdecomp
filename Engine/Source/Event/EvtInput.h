@@ -19,6 +19,9 @@ namespace Input {
 void ConvertPosition(int32_t x, int32_t y, float* outX, float* outY);
 int32_t IEvtConfirmClose();
 void IEvtDispatchFocusChanged(EvtContext* context, int32_t focus);
+void IEvtDispatchGamepadAxis(EvtContext* context, uint32_t device, GAMEPAD_AXIS axis, int32_t value, uint32_t time);
+void IEvtDispatchGamepadButton(EvtContext* context, uint32_t device, GAMEPAD_BUTTON button, uint32_t state, uint32_t time);
+void IEvtDispatchGamepadDevice(EvtContext* context, uint32_t device, GAMEPAD_DEVICE_EVENT event, GAMEPAD_TYPE type, uint32_t time);
 void IEvtDispatchInput(EvtContext* context, OSINPUT id, int32_t* param, int32_t* shutdown);
 void IEvtDispatchJoystickAxis(EvtContext* context, int32_t id, int32_t value, uint32_t time);
 void IEvtDispatchJoystickStick(EvtContext* context, int32_t id, int32_t x, int32_t y, uint32_t time);

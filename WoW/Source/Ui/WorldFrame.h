@@ -122,6 +122,8 @@ class CGWorldFrame : public CSimpleFrame {
     static void UpdateScreenEffect();
     static void UpdateScreenEffectParams();
     static int32_t Update(const void* data, void* param);
+    static int32_t OnGamepadButtonDown(const void* data, void* param);
+    static int32_t OnGamepadButtonUp(const void* data, void* param);
     static void RenderWorld(void* param);
     static int32_t ObjectEnumProc(void* param, uint32_t flags, uint64_t guid, uintptr_t param32);
     static int32_t MissileEnumProc(void* param, uint32_t flags, uint64_t guid, uintptr_t param32);

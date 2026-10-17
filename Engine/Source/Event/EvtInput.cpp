@@ -143,6 +143,21 @@ void IEvtDispatchJoystickAxis(EvtContext* context, int32_t id, int32_t value, ui
     IEvtQueueDispatch(context, EVENT_ID_19, &data);
 }
 
+void IEvtDispatchGamepadDevice(EvtContext* context, uint32_t device, GAMEPAD_DEVICE_EVENT event, GAMEPAD_TYPE type, uint32_t time) {
+    EVENT_DATA_GAMEPAD_DEVICE data = { device, event, type, time };
+    IEvtQueueDispatch(context, EVENT_ID_GAMEPAD_DEVICE, &data);
+}
+
+void IEvtDispatchGamepadButton(EvtContext* context, uint32_t device, GAMEPAD_BUTTON button, uint32_t state, uint32_t time) {
+    EVENT_DATA_GAMEPAD_BUTTON data = { device, button, state, time };
+    IEvtQueueDispatch(context, state ? EVENT_ID_GAMEPAD_BUTTON_DOWN : EVENT_ID_GAMEPAD_BUTTON_UP, &data);
+}
+
+void IEvtDispatchGamepadAxis(EvtContext* context, uint32_t device, GAMEPAD_AXIS axis, int32_t value, uint32_t time) {
+    EVENT_DATA_GAMEPAD_AXIS data = { device, axis, value, time };
+    IEvtQueueDispatch(context, EVENT_ID_GAMEPAD_AXIS, &data);
+}
+
 // VERIFY: 6364fe70 auto
 // OFFSET: 0x0047FB80
 void IEvtInputDestroy() {
@@ -478,6 +493,19 @@ void IEvtDispatchInput(EvtContext* context, OSINPUT id, int32_t* param, int32_t*
                 *shutdown = 1;
             }
 
+            break;
+
+        case OS_INPUT_GAMEPAD_DEVICE:
+            IEvtDispatchGamepadDevice(context, param[0], static_cast<GAMEPAD_DEVICE_EVENT>(param[1]), static_cast<GAMEPAD_TYPE>(param[2]), param[3]);
+            break;
+
+        case OS_INPUT_GAMEPAD_BUTTON_DOWN:
+        case OS_INPUT_GAMEPAD_BUTTON_UP:
+            IEvtDispatchGamepadButton(context, param[0], static_cast<GAMEPAD_BUTTON>(param[1]), id == OS_INPUT_GAMEPAD_BUTTON_DOWN, param[3]);
+            break;
+
+        case OS_INPUT_GAMEPAD_AXIS:
+            IEvtDispatchGamepadAxis(context, param[0], static_cast<GAMEPAD_AXIS>(param[1]), param[2], param[3]);
             break;
     }
 }

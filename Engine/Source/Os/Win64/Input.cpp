@@ -5,6 +5,7 @@
 #include <imm.h>
 #include <malloc.h>
 #include "Engine/Source/Event/Types.h"
+#include "Engine/Source/Os/Gamepad.h"
 #include "Engine/Source/Os/Gui.h"
 #include "Engine/Source/Os/Input.h"
 #include "Engine/Source/Os/Joystick.h"
@@ -850,10 +851,13 @@ void OsInputInitialize() {
     s_savedMouseSpeed = 10;
     SystemParametersInfoA(SPI_GETMOUSESPEED, 0, &s_savedMouseSpeed, 0);
     s_mouseSpeed = s_savedMouseSpeed;
+    OsGamepadInitialize();
 }
 
 // OFFSET: 0x00869760
 void OsInputDestroy() {
+    OsGamepadDestroy();
+
     if (GetAsyncKeyState(VK_NUMLOCK) != s_numLockState) {
         INPUT input = {};
         input.type = INPUT_KEYBOARD;
@@ -1177,6 +1181,7 @@ int32_t OsInputGet(OSINPUT* id, int32_t* param0, int32_t* param1, int32_t* param
     }
 
     if (s_queueHead == s_queueTail) {
+        OsGamepadPoll(s_appActive);
         OsPollJoysticks(s_appActive);
 
         MSG msg;

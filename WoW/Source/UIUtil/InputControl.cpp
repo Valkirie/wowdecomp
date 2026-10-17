@@ -5,10 +5,12 @@
 #include "Engine/Source/ConsoleBase/ConsoleVar.h"
 #include "Engine/Source/Event/CFocusEvent.h"
 #include "Engine/Source/Event/CMouseEvent.h"
+#include "Engine/Source/Event/Event.h"
 #include "Engine/Source/Frame/CSimpleTop.h"
 #include "Engine/Source/FrameScript/FrameScript.h"
 #include "Engine/Source/FrameXML/XMLTree.h"
 #include "Engine/Source/Gx/CGxDevice/CGxDevice.h"
+#include "Engine/Source/Os/Gamepad.h"
 #include "Engine/Source/Os/Joystick.h"
 #include "Engine/Source/Os/TimeManager.h"
 #include "Engine/Source/SteelseriesMouse/WowMouse.h"
@@ -87,7 +89,7 @@ void CGInputControl::SetMouseCVarHandler(bool enable) {
 
 // VERIFY: 36bc2098 auto
 // OFFSET: 0x005FD1D0
-CGInputControl::CGInputControl() : m_flags(0), m_lookStartTime(0), m_pendingDefaultAction(PENDING_ACTION_NONE), m_facingOverrideActive(0), m_facingOverride(0.0f), m_vehicleAimValid(0), m_vehicleAim(0.0f), m_mouseModeFlags(3), m_forceCursorOn(0), m_joystickMouseFlags(3), m_joystickLookX(0.0f), m_joystickLookY(0.0f), m_wowMouse(nullptr) {
+CGInputControl::CGInputControl() : m_flags(0), m_lookStartTime(0), m_pendingDefaultAction(PENDING_ACTION_NONE), m_facingOverrideActive(0), m_facingOverride(0.0f), m_vehicleAimValid(0), m_vehicleAim(0.0f), m_mouseModeFlags(3), m_forceCursorOn(0), m_joystickMouseFlags(3), m_joystickLookX(0.0f), m_joystickLookY(0.0f), m_wowMouse(nullptr), m_activeGamepad(0xFFFFFFFF), m_gamepadAxes{}, m_gamepadRawAxes{} {
     this->m_time = OsGetAsyncTimeMs();
 }
 
@@ -97,6 +99,8 @@ void InputControlInitialize() {
     CVar::Register("Joystick", "enable joystick control", 0, "0", JoystickCallback, 5, false, nullptr, false);
     s_cvCinematicJoystick = CVar::Register("CinematicJoystick", "enable cinematic joystick control", 0, "0", nullptr, 5, false, nullptr, false);
     CGInputControl::s_inputControl = new (SMemAlloc(sizeof(CGInputControl), __FILE__, __LINE__, 0)) CGInputControl();
+    EventRegisterEx(EVENT_ID_GAMEPAD_AXIS, CGInputControl::OnGamepadAxis, CGInputControl::s_inputControl, 1.0f);
+    EventRegisterEx(EVENT_ID_GAMEPAD_DEVICE, CGInputControl::OnGamepadDevice, CGInputControl::s_inputControl, 1.0f);
     s_cvEnableWowMouse = CVar::Register("enableWowMouse", "Enable Steelseries World of Warcraft Mouse", 1, "0", WowMouseCVarCallback, 5, false, nullptr, false);
 }
 
@@ -134,11 +138,79 @@ void CGInputControl::UpdateMouseMode(int32_t force) {
 
 // INLINED
 CGInputControl::~CGInputControl() {
+    EventUnregisterEx(EVENT_ID_GAMEPAD_AXIS, CGInputControl::OnGamepadAxis, this, 0xFFFFFFFF);
+    EventUnregisterEx(EVENT_ID_GAMEPAD_DEVICE, CGInputControl::OnGamepadDevice, this, 0xFFFFFFFF);
+
     if (this->m_wowMouse) {
         delete this->m_wowMouse;
     }
 
     this->m_wowMouse = nullptr;
+}
+
+static void ApplyGamepadStickDeadZone(float* x, float* y) {
+    constexpr float deadZone = 0.2f;
+    float magnitude = std::sqrt((*x * *x) + (*y * *y));
+
+    if (magnitude <= deadZone) {
+        *x = 0.0f;
+        *y = 0.0f;
+        return;
+    }
+
+    float normalizedMagnitude = (magnitude - deadZone) / (1.0f - deadZone);
+    float scale = normalizedMagnitude / magnitude;
+    *x *= scale;
+    *y *= scale;
+}
+
+int32_t CGInputControl::OnGamepadAxis(const void* data, void* param) {
+    const EVENT_DATA_GAMEPAD_AXIS* event = static_cast<const EVENT_DATA_GAMEPAD_AXIS*>(data);
+    CGInputControl* input = static_cast<CGInputControl*>(param);
+    uint32_t selectedDevice = OsGamepadGetSelectedDevice();
+
+    if (input->m_activeGamepad != selectedDevice) {
+        input->m_activeGamepad = selectedDevice;
+        memset(input->m_gamepadAxes, 0, sizeof(input->m_gamepadAxes));
+        memset(input->m_gamepadRawAxes, 0, sizeof(input->m_gamepadRawAxes));
+    }
+
+    if (event->m_device != input->m_activeGamepad || event->m_axis >= GAMEPAD_AXES) {
+        return 0;
+    }
+
+    if (event->m_axis >= GAMEPAD_AXIS_LEFT_TRIGGER) {
+        input->m_gamepadRawAxes[event->m_axis] = event->m_value > 0 ? event->m_value / 32767.0f : 0.0f;
+        input->m_gamepadAxes[event->m_axis] = input->m_gamepadRawAxes[event->m_axis];
+    } else {
+        input->m_gamepadRawAxes[event->m_axis] = event->m_value < 0 ? event->m_value / 32768.0f : event->m_value / 32767.0f;
+    }
+
+    if (event->m_axis <= GAMEPAD_AXIS_LEFT_Y) {
+        input->m_gamepadAxes[GAMEPAD_AXIS_LEFT_X] = input->m_gamepadRawAxes[GAMEPAD_AXIS_LEFT_X];
+        input->m_gamepadAxes[GAMEPAD_AXIS_LEFT_Y] = input->m_gamepadRawAxes[GAMEPAD_AXIS_LEFT_Y];
+        ApplyGamepadStickDeadZone(&input->m_gamepadAxes[GAMEPAD_AXIS_LEFT_X], &input->m_gamepadAxes[GAMEPAD_AXIS_LEFT_Y]);
+        input->UpdatePlayer(event->m_time, 1);
+    } else if (event->m_axis <= GAMEPAD_AXIS_RIGHT_Y) {
+        input->m_gamepadAxes[GAMEPAD_AXIS_RIGHT_X] = input->m_gamepadRawAxes[GAMEPAD_AXIS_RIGHT_X];
+        input->m_gamepadAxes[GAMEPAD_AXIS_RIGHT_Y] = input->m_gamepadRawAxes[GAMEPAD_AXIS_RIGHT_Y];
+        ApplyGamepadStickDeadZone(&input->m_gamepadAxes[GAMEPAD_AXIS_RIGHT_X], &input->m_gamepadAxes[GAMEPAD_AXIS_RIGHT_Y]);
+    }
+
+    return 1;
+}
+
+int32_t CGInputControl::OnGamepadDevice(const void* data, void* param) {
+    const EVENT_DATA_GAMEPAD_DEVICE* event = static_cast<const EVENT_DATA_GAMEPAD_DEVICE*>(data);
+    CGInputControl* input = static_cast<CGInputControl*>(param);
+
+    if (event->m_event == GAMEPAD_DEVICE_REMOVED && event->m_device == input->m_activeGamepad) {
+        input->m_activeGamepad = 0xFFFFFFFF;
+        memset(input->m_gamepadAxes, 0, sizeof(input->m_gamepadAxes));
+        memset(input->m_gamepadRawAxes, 0, sizeof(input->m_gamepadRawAxes));
+    }
+
+    return 1;
 }
 
 // VERIFY: e79550cf manual
@@ -630,6 +702,23 @@ void CGInputControl::OnUpdate(float elapsed) {
         }
     }
 
+    float gamepadLookX = this->m_gamepadAxes[GAMEPAD_AXIS_RIGHT_X];
+    float gamepadLookY = this->m_gamepadAxes[GAMEPAD_AXIS_RIGHT_Y];
+
+    if (gamepadLookX != 0.0f || gamepadLookY != 0.0f) {
+        CGCamera* camera = CGWorldFrame::GetActiveCamera();
+
+        if (camera) {
+            constexpr float gamepadLookScaleX = 500.0f;
+            constexpr float gamepadLookScaleY = 375.0f;
+            camera->UpdateFreeLookFacing(gamepadLookX * gamepadLookScaleX * elapsed, gamepadLookY * gamepadLookScaleY * elapsed, nullptr);
+
+            if (this->CanSyncFreeLookFacing(mover)) {
+                camera->SyncFreeLookFacing();
+            }
+        }
+    }
+
     if (mover->m_movement->m_flags & 0xC0) {
         CGInputControl::SendUIVehicleAngleUpdate(mover->GetPitch());
     }
@@ -1061,6 +1150,12 @@ void CGInputControl::MovePlayer(uint32_t time, CGUnit_C* unit) {
             direction--;
         }
 
+        if (this->m_gamepadAxes[GAMEPAD_AXIS_LEFT_Y] < 0.0f) {
+            direction++;
+        } else if (this->m_gamepadAxes[GAMEPAD_AXIS_LEFT_Y] > 0.0f) {
+            direction--;
+        }
+
         if (!direction) {
             if (flags & 0x10000) {
                 unit->OnMoveStopLocal(time);
@@ -1112,6 +1207,12 @@ void CGInputControl::StrafePlayer(uint32_t time, CGUnit_C* unit) {
     }
 
     if ((flags & 0x2000001) && (flags & 0x200)) {
+        direction--;
+    }
+
+    if (this->m_gamepadAxes[GAMEPAD_AXIS_LEFT_X] < 0.0f) {
+        direction++;
+    } else if (this->m_gamepadAxes[GAMEPAD_AXIS_LEFT_X] > 0.0f) {
         direction--;
     }
 
@@ -1351,6 +1452,8 @@ void DescendStart() {
 void CGInputControl::OnFocusChange(const CFocusEvent& event) {
     if (!event.m_data.m_focus) {
         this->m_flags &= 0xFFFFF00F;
+        memset(this->m_gamepadAxes, 0, sizeof(this->m_gamepadAxes));
+        memset(this->m_gamepadRawAxes, 0, sizeof(this->m_gamepadRawAxes));
         this->UpdatePlayer(OsGetAsyncTimeMs(), 1);
     }
 
